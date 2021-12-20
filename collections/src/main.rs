@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 fn main() {
     // vectors
     let v: Vec<i32> = Vec::new();
@@ -70,8 +72,6 @@ fn main() {
     }
 
     // hashmaps
-    use std::collections::HashMap;
-
     let mut scores = HashMap::new();
 
     scores.insert(String::from("Blue"), 10);
@@ -123,6 +123,7 @@ fn main() {
     // exercises
     ex1(vec![1, 6, 7, 2, 3, 4, 2]);
     ex2(&String::from("hello friend"));
+    ex3();
 }
 
 fn ex1(mut nums: Vec<i32>) {
@@ -134,7 +135,6 @@ fn ex1(mut nums: Vec<i32>) {
 
    nums.sort_unstable();
    println!("median: {}", nums[nums.len() / 2]);
-   use std::collections::HashMap;
    // hist counts entries in nums [1,1,2,3] -> {1: 2, 2: 1, 3: 1}
    let mut hist = HashMap::new();
    for i in nums {
@@ -173,4 +173,58 @@ fn ex2(eg: &str) {
        }
    }
    println!("pigwords: {:?}", pigwords);
+}
+
+use std::io;
+use regex::Regex;
+
+fn ex3() {
+   let mut departments: HashMap<String, Vec<String>> = HashMap::new();
+
+   let re = Regex::new(r"(?x)
+   (?P<quit>q(uit)?) |
+   (?P<add>add)\s+(?P<person>\S+)\s+to\s+(?P<dept>\S+) |
+   (?P<show>show)(?:\s+(?P<showdept>\S+))?
+   ").unwrap();
+
+   loop {
+        println!("Please input your command (quit, show [$dept], add <$person> to <$dept>");
+        let mut command = String::new();
+        io::stdin()
+            .read_line(&mut command)
+            .expect("couldn't read line");
+
+        match re.captures(&command) {
+            None => continue,
+            Some(c) => {
+                if c.name("quit").is_some() {
+                    break
+                }
+                if c.name("show").is_some() {
+                    let showdept = c.name("showdept");
+                    if showdept.is_some() {
+                        match departments.get(&String::from(showdept.unwrap().as_str())) {
+                            None => continue,
+                            Some(dept) => {
+                                let mut dept = dept.clone();
+                                dept.sort();
+                                for person in dept {
+                                    println!("{}", person);
+                                }
+                            }
+                        }
+                    } else {
+                        println!("{:?}", departments);
+                    }
+                }
+                if c.name("add").is_some() {
+                    let person = String::from(c.name("person").unwrap().as_str());
+                    let dept = String::from(c.name("dept").unwrap().as_str());
+
+                    let e = departments.entry(dept).or_insert_with(Vec::<String>::new);
+                    e.push(person);
+                }
+            }
+        }
+   }
 }
