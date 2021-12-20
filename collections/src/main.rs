@@ -178,14 +178,47 @@ fn ex2(eg: &str) {
 use std::io;
 use regex::Regex;
 
-fn ex3() {
-   let mut departments: HashMap<String, Vec<String>> = HashMap::new();
+enum Command {
+    Quit,
+    Add{person: String, dept: String},
+    Show{dept: Option<String>},
+}
 
+fn parse_command(s: String) -> Option<Command> {
    let re = Regex::new(r"(?x)
    (?P<quit>q(uit)?) |
    (?P<add>add)\s+(?P<person>\S+)\s+to\s+(?P<dept>\S+) |
    (?P<show>show)(?:\s+(?P<showdept>\S+))?
    ").unwrap();
+
+   match re.captures(&s) {
+       None => return None,
+       Some(c) => {
+           if c.name("quit").is_some() {
+               return Some(Command::Quit)
+           }
+           if c.name("show").is_some() {
+               let showdept = c.name("showdept");
+               if showdept.is_some() {
+                   return Some(Command::Show{ dept: Some(String::from(showdept.unwrap().as_str())) })
+               } else {
+                   return Some(Command::Show{ dept: None })
+               }
+           }
+           if c.name("add").is_some() {
+               let person = String::from(c.name("person").unwrap().as_str());
+               let dept = String::from(c.name("dept").unwrap().as_str());
+
+               return Some(Command::Add{person, dept})
+           } else {
+               return None
+           }
+       }
+   }
+}
+
+fn ex3() {
+   let mut departments: HashMap<String, Vec<String>> = HashMap::new();
 
    loop {
         println!("Please input your command (quit, show [$dept], add <$person> to <$dept>");
@@ -194,17 +227,16 @@ fn ex3() {
             .read_line(&mut command)
             .expect("couldn't read line");
 
-        match re.captures(&command) {
+        match parse_command(command) {
+            Some(Command::Quit) => break,
             None => continue,
-            Some(c) => {
-                if c.name("quit").is_some() {
-                    break
-                }
-                if c.name("show").is_some() {
-                    let showdept = c.name("showdept");
-                    if showdept.is_some() {
-                        match departments.get(&String::from(showdept.unwrap().as_str())) {
-                            None => continue,
+            Some(Command::Show{ dept: None }) => println!("{:?}", departments),
+            Some(Command::Show{ dept: Some(dept) }) => {
+                        match departments.get(&dept) {
+                            None => {
+                                println!("no such department.");
+                                continue
+                            },
                             Some(dept) => {
                                 let mut dept = dept.clone();
                                 dept.sort();
@@ -213,18 +245,11 @@ fn ex3() {
                                 }
                             }
                         }
-                    } else {
-                        println!("{:?}", departments);
-                    }
-                }
-                if c.name("add").is_some() {
-                    let person = String::from(c.name("person").unwrap().as_str());
-                    let dept = String::from(c.name("dept").unwrap().as_str());
-
-                    let e = departments.entry(dept).or_insert_with(Vec::<String>::new);
-                    e.push(person);
-                }
-            }
+            },
+            Some(Command::Add{person, dept}) => {
+                let e = departments.entry(dept).or_insert_with(Vec::<String>::new);
+                e.push(person);
+            },
         }
    }
 }
